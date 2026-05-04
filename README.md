@@ -7,3 +7,9 @@ To setup:
 ### `npm i`
 
 ### `npm run start`
+
+For dev server
+
+### `npm run dev`
+
+For deploying use docker image and port 80

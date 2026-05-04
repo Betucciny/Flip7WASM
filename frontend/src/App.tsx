@@ -17,9 +17,9 @@ export default function App() {
 
   return (
     <div style={{ padding: "2rem", "font-family": "sans-serif" }}>
-      <h1>Flip7 Helper</h1>
-      <p>Rust says:</p>
-      <pre>{message()}</pre>
+      <h1 class="text-3xl font-bold underline">Hello world!</h1>
+      <p class="text-2xl">Rust says:</p>
+      <pre class="underline">{message()}</pre>
     </div>
   );
 }

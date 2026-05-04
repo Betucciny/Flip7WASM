@@ -1,8 +1,9 @@
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [solid()],
+  plugins: [solid(), tailwindcss()],
   resolve: {
     tsconfigPaths: true,
   },
@@ -11,9 +12,7 @@ export default defineConfig({
       usePolling: true,
     },
     fs: {
-      allow: [
-        "..", // 👈 allow parent folder (simplest)
-      ],
+      allow: [".."],
     },
   },
   build: {
