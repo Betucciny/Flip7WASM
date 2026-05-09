@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "scripts": {
     "start": "npm run start:rust && npm run start:web",
-    "start:rust": "cd rust/engine && wasm-pack build --dev --target web",
+    "start:rust": "cd rust/wasm && wasm-pack build --dev --target web",
     "start:web": "cd frontend && npm i",
     "dev": "concurrently -n RUST,WEB -c blue,green \"npm:dev:rust\" \"npm:dev:web\"",
-    "dev:rust": "cd rust/engine && cargo watch -s \"wasm-pack build --dev --target web\"",
+    "dev:rust": "cd rust && cargo watch -w engine -w wasm -s \"cd wasm && wasm-pack build --dev --target web\"",
     "dev:web": "cd frontend && npm run dev"
   },
   "devDependencies": {

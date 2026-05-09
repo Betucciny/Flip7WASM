@@ -22,7 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@engine/*": ["../rust/engine/pkg/*"],
+      "@wasm/*": ["../rust/wasm/pkg/*"],
       "@app/*": ["./src/*"],
     },
   },
