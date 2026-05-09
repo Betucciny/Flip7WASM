@@ -17,7 +17,7 @@ RUN npm install -g wasm-pack
 COPY . .
 
 # ---------- Build Rust WASM ----------
-WORKDIR /app/rust/engine
+WORKDIR /app/rust/wasm
 RUN wasm-pack build --release --target web
 
 # ---------- Build frontend ----------
