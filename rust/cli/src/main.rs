@@ -1,4 +1,5 @@
-use std::io::{self, Write};
+use dialoguer::{Confirm, Select, theme::ColorfulTheme};
+use std::io::Write;
 
 use engine::{
     game::{
@@ -12,34 +13,61 @@ use engine::{
     simulation::{RecommendedAction, bust_probability_for_current_player, recommend},
 };
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+fn theme() -> ColorfulTheme {
+    ColorfulTheme::default()
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 fn main() {
     print_banner();
     loop {
-        let n = read_usize("  Players (2–6): ", 2, 6);
+        let n = pick_player_count();
         run_game(n);
-        if !ask_yn("\n  New game?", false) {
+        if !ask_yn("  Play again?", false) {
             break;
         }
     }
     println!("\n  Goodbye!\n");
 }
 
-// ── Game / round loops ────────────────────────────────────────────────────────
+// ── Player count ──────────────────────────────────────────────────────────────
+
+fn pick_player_count() -> usize {
+    println!();
+    let items = [
+        "2 players",
+        "3 players",
+        "4 players",
+        "5 players",
+        "6 players",
+        "7 players",
+        "8 players",
+        "9 players",
+    ];
+    let idx = Select::with_theme(&theme())
+        .with_prompt("  How many players?")
+        .items(&items)
+        .default(0)
+        .interact()
+        .unwrap_or(0);
+    idx + 2
+}
+
+// ── Game loop ─────────────────────────────────────────────────────────────────
 
 fn run_game(player_count: usize) {
     let mut state = new_game(player_count);
-    println!("\n  Game started with {} players.\n", player_count);
+    println!("\n  ▶  Game started — {} players\n", player_count);
     loop {
         run_round(&mut state);
         print_round_results(&state);
-        // Always commit round scores before any further checks.
         end_round(&mut state);
 
-        // 200-point win condition — checked after scores are official.
-        if let Some(winner) = find_winner(&state) {
-            println!("\n  🏆  Player {winner} reached 200 points — GAME OVER!\n");
+        if let Some(w) = find_winner(&state) {
+            println!("\n  🏆  Player {w} reached 200 points — GAME OVER!\n");
             break;
         }
 
@@ -50,8 +78,6 @@ fn run_game(player_count: usize) {
     print_final_scores(&state);
 }
 
-/// Returns the index of the player with the highest score ≥ 200, or `None` if
-/// nobody has crossed the threshold yet.
 fn find_winner(state: &GameState) -> Option<usize> {
     state
         .players
@@ -62,158 +88,264 @@ fn find_winner(state: &GameState) -> Option<usize> {
         .map(|(i, _)| i)
 }
 
+// ── Round loop ────────────────────────────────────────────────────────────────
+
 fn run_round(state: &mut GameState) {
+    clear_screen();
     print_round_header(state);
+
     while state.phase == GamePhase::Playing {
+        clear_screen();
+        print_round_header(state);
         print_board(state);
         print_player_detail(state);
-        // Compute and display recommendation once per "frame".
+
+        // Compute recommendation once per frame (before the prompt).
         let rec = recommend(state, 500);
         if let Some(ref r) = rec {
             print_advice(r);
         }
-        // Keep prompting until a valid game action is accepted.
-        loop {
-            match handle_input(&read_line("  > "), state) {
-                InputResult::Applied => break,
-                InputResult::Refresh => {
-                    // Re-run recommendation and re-prompt without redrawing board.
-                    if let Some(ref r) = recommend(state, 500) {
-                        print_advice(r);
-                    }
-                }
-                InputResult::Err(msg) => println!("  ! {}\n", msg),
-            }
-        }
-    }
-}
 
-// ── Command handler ───────────────────────────────────────────────────────────
-
-enum InputResult {
-    Applied,
-    Refresh,
-    Err(String),
-}
-
-fn handle_input(line: &str, state: &mut GameState) -> InputResult {
-    let toks: Vec<&str> = line.trim().split_whitespace().collect();
-    let cmd = match toks.first() {
-        Some(c) => c.to_ascii_lowercase(),
-        None => return InputResult::Err("No command. Type 'h' for help.".into()),
-    };
-    let pid = state.current_player;
-
-    match cmd.as_str() {
-        // ── Draw actions ─────────────────────────────────────────────────────
-        "d" | "draw" => do_action(state, pid, Action::Draw),
-
-        "k" | "known" => match parse_card(&toks[1..]) {
-            Some(card) => do_action(state, pid, Action::DrawKnown { card }),
-            None => InputResult::Err(
-                "Usage: k n <0-12>  |  k a lif/frz/tp3  |  k m 2/4/6/8/10/x2".into(),
-            ),
-        },
-
-        // ── Known tap3 (real-game tracking) ──────────────────────────────────
-        "kt" | "tap3known" => match parse_tap3_known(&toks[1..]) {
-            Some((target, cards)) => do_action(state, pid, Action::Tap3Known { target, cards }),
-            None => InputResult::Err(
-                "Usage: kt <target> <type> <val> [<type> <val>] [<type> <val>]".into(),
-            ),
-        },
-
-        // ── Stop ─────────────────────────────────────────────────────────────
-        "s" | "stop" => do_action(state, pid, Action::Stop),
-        "f" | "freeze" => match parse_idx(&toks) {
-            Some(t) => do_action(state, pid, Action::Freeze { target: t }),
-            None => InputResult::Err("Usage: freeze <player_number>".into()),
-        },
-        "t" | "tap3" => match parse_idx(&toks) {
-            Some(t) => do_action(state, pid, Action::Tap3 { target: t }),
-            None => InputResult::Err("Usage: tap3 <player_number>".into()),
-        },
-
-        // ── Pending-effect resolution ─────────────────────────────────────────
-        // ── Info / meta ───────────────────────────────────────────────────────
-        "r" | "rec" => InputResult::Refresh,
-        "h" | "help" | "?" => {
-            print_help(state);
-            InputResult::Refresh
-        }
-        "q" | "quit" | "exit" => {
+        let Some(action) = select_action(state) else {
             println!("\n  Exiting.\n");
             std::process::exit(0);
-        }
-        other => InputResult::Err(format!("Unknown command '{other}'. Type 'h' for help.")),
-    }
-}
+        };
 
-fn do_action(state: &mut GameState, pid: usize, action: Action) -> InputResult {
-    match apply_action(state.clone(), pid, action) {
-        Ok(new) => {
-            *state = new;
-            InputResult::Applied
-        }
-        Err(e) => InputResult::Err(format!("{e:?}")),
-    }
-}
-
-// ── Card / index parsing ──────────────────────────────────────────────────────
-
-fn parse_card(toks: &[&str]) -> Option<Card> {
-    match toks.first()?.to_ascii_lowercase().as_str() {
-        "n" => {
-            let n: u8 = toks.get(1)?.parse().ok()?;
-            (n <= 12).then_some(Card::Number(n))
-        }
-        "a" => match toks.get(1)?.to_ascii_lowercase().as_str() {
-            "l" | "lif" | "lifeline" => Some(Card::Action(ActionCard::Lifeline)),
-            "f" | "frz" | "freeze" => Some(Card::Action(ActionCard::Freeze)),
-            "t" | "tp3" | "tap3" => Some(Card::Action(ActionCard::Tap3)),
-            _ => None,
-        },
-        "m" => match toks.get(1)?.to_ascii_lowercase().as_str() {
-            "2" => Some(Card::Modifier(ModifierCard::Add(2))),
-            "4" => Some(Card::Modifier(ModifierCard::Add(4))),
-            "6" => Some(Card::Modifier(ModifierCard::Add(6))),
-            "8" => Some(Card::Modifier(ModifierCard::Add(8))),
-            "10" => Some(Card::Modifier(ModifierCard::Add(10))),
-            "x2" | "*2" | "mul" | "multiply2" => Some(Card::Modifier(ModifierCard::Multiply2)),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn parse_idx(toks: &[&str]) -> Option<usize> {
-    toks.get(1)?.parse().ok()
-}
-
-/// Parses `kt` arguments: `<target> [<type> <val>]{1,3}`
-///
-/// Example: `kt 2 n 5 n 3 a lif`
-fn parse_tap3_known(toks: &[&str]) -> Option<(usize, Vec<Card>)> {
-    let target: usize = toks.first()?.parse().ok()?;
-    let mut cards = Vec::new();
-    let mut i = 1; // toks[0] was the target
-    while i + 1 < toks.len() && cards.len() < 3 {
-        match parse_card(&toks[i..i + 2]) {
-            Some(card) => {
-                cards.push(card);
-                i += 2;
+        let pid = state.current_player;
+        match apply_action(state.clone(), pid, action) {
+            Ok(new) => *state = new,
+            Err(e) => {
+                println!("\n  ⚠  Engine error: {e:?}\n");
+                pause_ms(1500);
             }
-            None => return None,
         }
     }
-    if cards.is_empty() {
-        None
-    } else {
-        Some((target, cards))
+}
+
+// ── Action selection ──────────────────────────────────────────────────────────
+
+/// Returns the action to apply, or `None` when the user chooses Quit.
+fn select_action(state: &GameState) -> Option<Action> {
+    // ── Forced: pending effect needs resolution ────────────────────────────
+    if let Some(effect) = &state.pending_effect {
+        return match effect {
+            PendingEffect::Freeze => {
+                let target = pick_target(state, "❄️  Freeze which player?");
+                Some(Action::Freeze { target })
+            }
+            PendingEffect::Tap3 => {
+                let mode_items = [
+                    "🎲  Random draw  (simulation — unknown card)",
+                    "🃏  Enter known cards  (real-game tracking)",
+                ];
+                let mode = Select::with_theme(&theme())
+                    .with_prompt("  👆  Tap3 — how are you drawing?")
+                    .items(&mode_items)
+                    .default(0)
+                    .interact()
+                    .unwrap_or(0);
+
+                let target = pick_target(state, "👆  Tap3 which player?");
+
+                if mode == 0 {
+                    Some(Action::Tap3 { target })
+                } else {
+                    let cards = collect_tap3_cards(state, target);
+                    Some(Action::Tap3Known { target, cards })
+                }
+            }
+        };
     }
+
+    // ── Normal turn ────────────────────────────────────────────────────────
+    let items = [
+        "🎲  Draw            draw a random card from the deck",
+        "✋  Stop            lock in your current score",
+        "🚪  Quit",
+    ];
+
+    loop {
+        let i = Select::with_theme(&theme())
+            .with_prompt("  What do you want to do?")
+            .items(&items)
+            .default(0)
+            .interact()
+            .unwrap_or(usize::MAX);
+
+        return match i {
+            0 => {
+                println!();
+                Some(Action::DrawKnown { card: pick_card() })
+            }
+            1 => Some(Action::Stop),
+            2 => None,
+            _ => continue, // shouldn't happen
+        };
+    }
+}
+
+// ── Card picker ───────────────────────────────────────────────────────────────
+
+fn pick_card() -> Card {
+    let type_items = [
+        "Number      0 – 12",
+        "Action      Lifeline / Freeze / Tap3",
+        "Modifier    +2  +4  +6  +8  +10  ×2",
+    ];
+
+    let type_i = Select::with_theme(&theme())
+        .with_prompt("  Card type")
+        .items(&type_items)
+        .default(0)
+        .interact()
+        .unwrap_or(0);
+
+    match type_i {
+        0 => {
+            // All 13 number values as labelled strings.
+            let nums: Vec<String> = (0u8..=12).map(|n| format!("  {n}")).collect();
+            let n_i = Select::with_theme(&theme())
+                .with_prompt("  Number card")
+                .items(&nums)
+                .default(0)
+                .interact()
+                .unwrap_or(0);
+            Card::Number(n_i as u8)
+        }
+        1 => {
+            let actions = ["🛡️  Lifeline", "❄️  Freeze", "👆  Tap3"];
+            let a_i = Select::with_theme(&theme())
+                .with_prompt("  Action card")
+                .items(&actions)
+                .default(0)
+                .interact()
+                .unwrap_or(0);
+            match a_i {
+                0 => Card::Action(ActionCard::Lifeline),
+                1 => Card::Action(ActionCard::Freeze),
+                _ => Card::Action(ActionCard::Tap3),
+            }
+        }
+        _ => {
+            let mods = ["+2", "+4", "+6", "+8", "+10", "×2  (Multiply 2)"];
+            let m_i = Select::with_theme(&theme())
+                .with_prompt("  Modifier card")
+                .items(&mods)
+                .default(0)
+                .interact()
+                .unwrap_or(0);
+            match m_i {
+                0 => Card::Modifier(ModifierCard::Add(2)),
+                1 => Card::Modifier(ModifierCard::Add(4)),
+                2 => Card::Modifier(ModifierCard::Add(6)),
+                3 => Card::Modifier(ModifierCard::Add(8)),
+                4 => Card::Modifier(ModifierCard::Add(10)),
+                _ => Card::Modifier(ModifierCard::Multiply2),
+            }
+        }
+    }
+}
+
+// ── Target picker ─────────────────────────────────────────────────────────────
+
+fn pick_target(state: &GameState, prompt: &str) -> usize {
+    let pid = state.current_player;
+    let targets: Vec<(usize, String)> = state
+        .players
+        .iter()
+        .enumerate()
+        .filter(|&(i, p)| i != pid && p.status == PlayerStatus::Active)
+        .map(|(i, p)| {
+            let nums: Vec<String> = p.numbers.iter().map(|n| n.to_string()).collect();
+            let label = format!(
+                "Player {i}  ({} pts)  [{}]",
+                calculate_score(p),
+                if nums.is_empty() {
+                    "—".into()
+                } else {
+                    nums.join(" ")
+                }
+            );
+            (i, label)
+        })
+        .collect();
+
+    let labels: Vec<&str> = targets.iter().map(|(_, s)| s.as_str()).collect();
+
+    let i = Select::with_theme(&theme())
+        .with_prompt(prompt)
+        .items(&labels)
+        .default(0)
+        .interact()
+        .unwrap_or(0);
+
+    targets[i].0
+}
+
+// ── Tap3 card collector ───────────────────────────────────────────────────────
+
+/// Interactively collects up to 3 cards the Tap3 victim actually drew,
+/// stopping early on bust or Flip7.
+fn collect_tap3_cards(state: &GameState, target: usize) -> Vec<Card> {
+    let p = &state.players[target];
+    let mut held: Vec<u8> = p.numbers.clone();
+    let mut has_lifeline = p.has_lifeline;
+    let mut cards: Vec<Card> = Vec::new();
+
+    for draw_num in 1..=3usize {
+        println!();
+        println!("  ── P{target}: card {} of 3 ──", draw_num);
+        let card = pick_card();
+
+        // Simulate locally to detect bust / Flip7 and exit early.
+        if let Card::Number(n) = &card {
+            if held.contains(n) {
+                if has_lifeline {
+                    has_lifeline = false;
+                    println!("  🛡️  Lifeline consumed — P{target} survives the duplicate.");
+                } else {
+                    cards.push(card);
+                    println!("\n  💥  Player {target} busted on card {}!\n", draw_num);
+                    pause_ms(800);
+                    return cards;
+                }
+            } else {
+                held.push(*n);
+                if held.len() >= 7 {
+                    cards.push(card);
+                    println!("\n  🏅  Player {target} got FLIP 7!\n");
+                    pause_ms(800);
+                    return cards;
+                }
+            }
+        }
+
+        cards.push(card);
+
+        // After cards 1 and 2, ask whether to enter another.
+        if draw_num < 3
+            && !ask_yn(
+                &format!("  Enter card {} of 3 for P{target}?", draw_num + 1),
+                true,
+            )
+        {
+            break;
+        }
+    }
+
+    cards
 }
 
 // ── Display helpers ───────────────────────────────────────────────────────────
+
+fn clear_screen() {
+    print!("\x1b[2J\x1b[H");
+    std::io::stdout().flush().unwrap();
+}
+
+fn pause_ms(ms: u64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms));
+}
 
 const W: usize = 60; // inner box width
 
@@ -269,7 +401,7 @@ fn print_board(state: &GameState) {
         } else {
             nums.join(" ")
         };
-        let life = if p.has_lifeline { " 🛡" } else { "  " };
+        let life = if p.has_lifeline { " 🛡" } else { "   " };
         let score = calculate_score(p);
         println!(
             "  {arrow} P{i}  {status}  tot:{:4}  score:{:3}{life}  [{}]",
@@ -283,7 +415,16 @@ fn print_player_detail(state: &GameState) {
     let pid = state.current_player;
     let p = &state.players[pid];
 
-    // Pending effect banner
+    // Chain banner — shown when resolving a queued effect from someone else's Tap3.
+    if state.current_player != state.turn_holder {
+        println!(
+            "  ⛓  Chain: P{}'s Tap3 → P{pid} resolves a queued effect",
+            state.turn_holder
+        );
+        println!();
+    }
+
+    // Pending-effect detail: list valid targets.
     if let Some(effect) = &state.pending_effect {
         let name = match effect {
             PendingEffect::Freeze => "FREEZE",
@@ -296,7 +437,11 @@ fn print_player_detail(state: &GameState) {
                 println!(
                     "       P{i}  score: {:3}  [{}]",
                     calculate_score(op),
-                    nums.join(" ")
+                    if nums.is_empty() {
+                        "—".into()
+                    } else {
+                        nums.join(" ")
+                    }
                 );
             }
         }
@@ -304,7 +449,7 @@ fn print_player_detail(state: &GameState) {
         return;
     }
 
-    // Normal turn detail
+    // Normal turn detail.
     let mods: Vec<String> = p
         .modifiers
         .iter()
@@ -369,36 +514,6 @@ fn print_advice(rec: &engine::simulation::Recommendation) {
     println!();
 }
 
-fn print_help(state: &GameState) {
-    println!();
-    println!("  ── Commands ────────────────────────────────────────────────");
-    println!("  d               random draw (simulation / unknown card)");
-    println!("  k n <0-12>      draw a specific number card");
-    println!("  k a lif         draw Lifeline action card");
-    println!("  k a frz         draw Freeze action card");
-    println!("  k a tp3         draw Tap3 action card");
-    println!("  k m 2/4/6/8/10  draw an Add modifier card");
-    println!("  k m x2          draw the ×2 modifier card");
-    println!("  s               stop — lock in your current score");
-    match state.pending_effect.as_ref() {
-        Some(PendingEffect::Freeze) => println!("  f <n>           <- REQUIRED: freeze player n"),
-        Some(PendingEffect::Tap3) => {
-            println!("  t <n>           <- REQUIRED: tap3 player n  (random draw)");
-            println!("  kt <n> <cards>  <- REQUIRED: tap3 with known cards");
-            println!("                    e.g.  kt 2 n 5 n 3 a lif");
-        }
-        None => {
-            println!("  f <n>           freeze player n  (after drawing Freeze)");
-            println!("  t <n>           tap3 player n   (random  — after drawing Tap3)");
-            println!("  kt <n> <cards>  tap3 with known cards (up to 3 card specs)");
-        }
-    }
-    println!("  r               re-run advisor recommendation");
-    println!("  h               show this help");
-    println!("  q               quit");
-    println!();
-}
-
 fn print_round_results(state: &GameState) {
     println!();
     println!(
@@ -456,35 +571,12 @@ fn print_final_scores(state: &GameState) {
     println!();
 }
 
-// ── I/O helpers ───────────────────────────────────────────────────────────────
+// ── Prompt helpers ────────────────────────────────────────────────────────────
 
-fn read_line(prompt: &str) -> String {
-    print!("{prompt}");
-    io::stdout().flush().unwrap();
-    let mut buf = String::new();
-    io::stdin().read_line(&mut buf).unwrap();
-    buf
-}
-
-fn read_usize(prompt: &str, min: usize, max: usize) -> usize {
-    loop {
-        let line = read_line(prompt);
-        match line.trim().parse::<usize>() {
-            Ok(n) if n >= min && n <= max => return n,
-            _ => println!("  Enter a number between {min} and {max}."),
-        }
-    }
-}
-
-fn ask_yn(prompt: &str, default_yes: bool) -> bool {
-    let hint = if default_yes { "[Y/n]" } else { "[y/N]" };
-    loop {
-        let line = read_line(&format!("{prompt} {hint} "));
-        match line.trim().to_ascii_lowercase().as_str() {
-            "y" | "yes" => return true,
-            "n" | "no" => return false,
-            "" => return default_yes,
-            _ => println!("  Please answer y or n."),
-        }
-    }
+fn ask_yn(prompt: &str, default: bool) -> bool {
+    Confirm::with_theme(&theme())
+        .with_prompt(prompt)
+        .default(default)
+        .interact()
+        .unwrap_or(default)
 }

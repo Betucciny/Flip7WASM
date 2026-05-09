@@ -1,58 +1,59 @@
-name: Build CLI Binaries
+name: Build & Release CLI
 
 on:
   push:
     tags:
-      - "v*"           # trigger on version tags:  git tag v1.0.0 && git push --tags
-  workflow_dispatch:   # also allow manual runs from the Actions tab
+      - "v*" # trigger on version tags:  git tag v1.0.0 && git push --tags
+  workflow_dispatch: # also allow manual runs from the Actions tab
 
 jobs:
+  # ── Build one binary per platform ──────────────────────────────────────────
   build:
     name: Build — ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
 
     strategy:
-      fail-fast: false   # let all three finish even if one fails
+      fail-fast: false # let all three finish even if one fails
       matrix:
         include:
-          - name:   Linux (x86-64)
-            os:     ubuntu-latest
-            target: x86_64-unknown-linux-musl   # fully static binary, no glibc dep
+          - name: Linux (x86-64 static)
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl # fully static, no glibc dep
             artifact: flip7-linux-x86_64
 
-          - name:   macOS (Apple Silicon + Intel universal)
-            os:     macos-latest
-            target: aarch64-apple-darwin         # built first, lipo'd below
+          - name: macOS (Apple Silicon + Intel universal)
+            os: macos-latest
+            target: aarch64-apple-darwin
             artifact: flip7-macos-universal
 
-          - name:   Windows (x86-64)
-            os:     windows-latest
+          - name: Windows (x86-64)
+            os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: flip7-windows-x86_64.exe
 
     steps:
-      # ── Checkout ────────────────────────────────────────────────────────────
+      # ── Checkout ─────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Rust toolchain ───────────────────────────────────────────────────────
+      # ── Rust toolchain ────────────────────────────────────────────────────
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      # macOS universal binary needs both targets
-      - name: Install macOS Intel target (for universal binary)
+      # macOS universal binary needs both arch targets installed
+      - name: Add macOS Intel target
         if: matrix.os == 'macos-latest'
         run: rustup target add x86_64-apple-darwin
 
-      # musl libc toolchain for fully-static Linux builds
+      # musl-tools provides the musl-gcc wrapper for static Linux builds
       - name: Install musl tools (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y musl-tools
 
-      # ── Cache ────────────────────────────────────────────────────────────────
-      - name: Cache Cargo registry + build
+      # ── Cache ─────────────────────────────────────────────────────────────
+      - name: Cache Cargo registry + build artifacts
         uses: actions/cache@v4
         with:
           path: |
@@ -62,13 +63,13 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      # ── Build ────────────────────────────────────────────────────────────────
+      # ── Build ─────────────────────────────────────────────────────────────
       - name: Build (Linux / Windows)
         if: matrix.os != 'macos-latest'
         working-directory: rust
         run: cargo build --release --package cli --target ${{ matrix.target }}
 
-      # macOS: build arm64 + x86_64 separately, then combine with lipo
+      # macOS: build arm64 + x86_64, then fuse with lipo
       - name: Build arm64 (macOS)
         if: matrix.os == 'macos-latest'
         working-directory: rust
@@ -87,7 +88,19 @@ jobs:
             rust/target/x86_64-apple-darwin/release/flip7 \
             -output flip7-macos-universal
 
-      # ── Stage the artifact under a consistent name ───────────────────────────
+      # ── Strip debug symbols (Linux + macOS only) ──────────────────────────
+      # Strips debug info from the binary — typically cuts size by 60-70 %.
+      # On Windows/MSVC the linker keeps debug symbols in a separate .pdb
+      # file (not embedded), so stripping isn't needed there.
+      - name: Strip binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: strip rust/target/${{ matrix.target }}/release/flip7
+
+      - name: Strip binary (macOS)
+        if: matrix.os == 'macos-latest'
+        run: strip flip7-macos-universal
+
+      # ── Stage artifact under its final name ───────────────────────────────
       - name: Stage artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: cp rust/target/${{ matrix.target }}/release/flip7 ${{ matrix.artifact }}
@@ -96,9 +109,9 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: copy rust\target\${{ matrix.target }}\release\flip7.exe ${{ matrix.artifact }}
 
-      # macOS artifact was already written to the root by lipo above
+      # macOS: lipo already wrote flip7-macos-universal to the repo root
 
-      # ── Upload ───────────────────────────────────────────────────────────────
+      # ── Upload ────────────────────────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -106,30 +119,49 @@ jobs:
           path: ${{ matrix.artifact }}
           if-no-files-found: error
 
-  # ── Create a GitHub Release with all three binaries attached ────────────────
+  # ── Publish GitHub Release ─────────────────────────────────────────────────
   release:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    # Only publish a release when triggered by a version tag
+    # Only run when triggered by a version tag (not on workflow_dispatch alone)
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
-      contents: write   # needed to create releases and upload assets
+      contents: write # required to create a release and upload assets
 
     steps:
-      - name: Download all artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: artifacts # each artifact lands in artifacts/<artifact-name>/
 
-      - name: List downloaded files (debug)
-        run: find artifacts -type f
+      - name: List downloaded files
+        run: find artifacts -type f | sort
+
+      # Generate a SHA256SUMS.txt with just the bare filenames (no subdirs).
+      - name: Generate SHA256 checksums
+        working-directory: artifacts
+        run: |
+          sha256sum \
+            flip7-linux-x86_64/flip7-linux-x86_64 \
+            flip7-macos-universal/flip7-macos-universal \
+            flip7-windows-x86_64.exe/flip7-windows-x86_64.exe \
+            | sed 's|.*/||' \
+            > SHA256SUMS.txt
+          echo "--- checksums ---"
+          cat SHA256SUMS.txt
 
       - name: Create release and upload binaries
         uses: softprops/action-gh-release@v2
         with:
+          name: "Flip7 ${{ github.ref_name }}"
+          # Tags containing a hyphen (v1.0.0-beta.1, v2.0.0-rc.2, …)
+          # are marked as pre-releases automatically.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             artifacts/flip7-linux-x86_64/flip7-linux-x86_64
             artifacts/flip7-macos-universal/flip7-macos-universal
             artifacts/flip7-windows-x86_64.exe/flip7-windows-x86_64.exe
-          generate_release_notes: true   # auto-generates notes from commits
+            artifacts/SHA256SUMS.txt

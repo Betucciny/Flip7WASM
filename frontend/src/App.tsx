@@ -40,7 +40,7 @@ export default function App() {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function refreshRec(s: GameState) {
-    setRec(s.phase.type === "Playing" ? getRecommendation(s, 500) : null);
+    setRec(s.phase.type === "Playing" ? getRecommendation(s, 5000) : null);
   }
 
   function pushHistory(s: GameState) {
@@ -63,6 +63,11 @@ export default function App() {
     if (!s) return;
     try {
       const next = applyAction(s, s.current_player, action);
+      console.log("Total cards in deck:", next.deck.draw_pile.length);
+      console.log(
+        "Total cards in discard pile:",
+        next.deck.discard_pile.length,
+      );
       pushHistory(s); // save pre-action state for undo
       setGameState(next);
       refreshRec(next);
