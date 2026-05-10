@@ -100,8 +100,11 @@ pub fn apply_action(
             if target >= state.players.len() {
                 return Err(EngineError::InvalidTarget);
             }
-            tap3(&mut state, target);
+            // Clear the triggering Tap3 BEFORE the forced draws so that the
+            // `.take()` inside the loop only captures effects drawn *during*
+            // those 3 forced cards, not the original pending effect.
             state.pending_effect = None;
+            tap3(&mut state, target);
             after_tap3(&mut state, target);
         }
 
@@ -109,8 +112,9 @@ pub fn apply_action(
             if target >= state.players.len() {
                 return Err(EngineError::InvalidTarget);
             }
-            tap3_known(&mut state, target, cards);
+            // Same fix: clear before the forced draws.
             state.pending_effect = None;
+            tap3_known(&mut state, target, cards);
             after_tap3(&mut state, target);
         }
     }
