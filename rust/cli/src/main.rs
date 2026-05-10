@@ -25,7 +25,9 @@ fn main() {
     print_banner();
     loop {
         let n = pick_player_count();
-        run_game(n);
+        let mode = pick_game_mode();
+        let hints = ask_yn("  Show AI advisor hints?", true);
+        run_game(n, mode, hints);
         if !ask_yn("  Play again?", false) {
             break;
         }
@@ -56,13 +58,31 @@ fn pick_player_count() -> usize {
     idx + 2
 }
 
+fn pick_game_mode() -> CliMode {
+    let items = [
+        "🎮  Simulator   engine draws random cards",
+        "📋  Tracker     you enter each card  (real-game tracking)",
+    ];
+    let idx = Select::with_theme(&theme())
+        .with_prompt("  Game mode")
+        .items(&items)
+        .default(0)
+        .interact()
+        .unwrap_or(0);
+    if idx == 0 {
+        CliMode::Simulator
+    } else {
+        CliMode::Tracker
+    }
+}
+
 // ── Game loop ─────────────────────────────────────────────────────────────────
 
-fn run_game(player_count: usize) {
+fn run_game(player_count: usize, mode: CliMode, hints: bool) {
     let mut state = new_game(player_count);
     println!("\n  ▶  Game started — {} players\n", player_count);
     loop {
-        run_round(&mut state);
+        run_round(&mut state, mode, hints);
         print_round_results(&state);
         end_round(&mut state);
 
@@ -96,9 +116,19 @@ enum Turn {
     Quit,
 }
 
+// ── Game mode ─────────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, PartialEq)]
+enum CliMode {
+    /// Engine draws random cards from its shuffled deck.
+    Simulator,
+    /// Player enters each card drawn (real-game tracking).
+    Tracker,
+}
+
 // ── Round loop ────────────────────────────────────────────────────────────────
 
-fn run_round(state: &mut GameState) {
+fn run_round(state: &mut GameState, mode: CliMode, hints: bool) {
     let mut history: Vec<GameState> = Vec::new();
     clear_screen();
     print_round_header(state);
@@ -109,13 +139,15 @@ fn run_round(state: &mut GameState) {
         print_board(state);
         print_player_detail(state);
 
-        // Compute recommendation once per frame (before the prompt).
-        let rec = recommend(state, 500);
-        if let Some(ref r) = rec {
-            print_advice(r);
+        // Compute and display advisor recommendation only when hints are on.
+        if hints {
+            let rec = recommend(state, 500);
+            if let Some(ref r) = rec {
+                print_advice(r);
+            }
         }
 
-        match select_action(state, !history.is_empty()) {
+        match select_action(state, !history.is_empty(), mode) {
             Turn::Quit => {
                 println!("\n  Exiting.\n");
                 std::process::exit(0);
@@ -153,7 +185,7 @@ fn run_round(state: &mut GameState) {
 // ── Action selection ──────────────────────────────────────────────────────────
 
 /// Returns the turn result: an action to apply, an undo request, or quit.
-fn select_action(state: &GameState, can_undo: bool) -> Turn {
+fn select_action(state: &GameState, can_undo: bool, mode: CliMode) -> Turn {
     // ── Forced: pending effect needs resolution ────────────────────────────
     if let Some(effect) = &state.pending_effect {
         // When undo is available, give the player a chance to back out
@@ -179,20 +211,8 @@ fn select_action(state: &GameState, can_undo: bool) -> Turn {
                 Turn::Act(Action::Freeze { target })
             }
             PendingEffect::Tap3 => {
-                let mode_items = [
-                    "🎲  Random draw  (simulation — unknown card)",
-                    "🃏  Enter known cards  (real-game tracking)",
-                ];
-                let mode = Select::with_theme(&theme())
-                    .with_prompt("  👆  Tap3 — how are you drawing?")
-                    .items(&mode_items)
-                    .default(0)
-                    .interact()
-                    .unwrap_or(0);
-
                 let target = pick_target(state, "👆  Tap3 which player?");
-
-                if mode == 0 {
+                if mode == CliMode::Simulator {
                     Turn::Act(Action::Tap3 { target })
                 } else {
                     let cards = collect_tap3_cards(state, target);
@@ -203,10 +223,12 @@ fn select_action(state: &GameState, can_undo: bool) -> Turn {
     }
 
     // ── Normal turn ────────────────────────────────────────────────────────
-    let mut menu: Vec<&str> = vec![
-        "🃏  Draw            enter the card you flipped",
-        "✋  Stop            lock in your current score",
-    ];
+    let draw_label = if mode == CliMode::Simulator {
+        "🎲  Draw            draw a random card from the deck"
+    } else {
+        "🃏  Draw            enter the card you flipped"
+    };
+    let mut menu: Vec<&str> = vec![draw_label, "✋  Stop            lock in your current score"];
     if can_undo {
         menu.push("↩  Undo            restore the previous state");
     }
@@ -225,8 +247,12 @@ fn select_action(state: &GameState, can_undo: bool) -> Turn {
 
         return match i {
             0 => {
-                println!();
-                Turn::Act(Action::DrawKnown { card: pick_card() })
+                if mode == CliMode::Simulator {
+                    Turn::Act(Action::Draw)
+                } else {
+                    println!();
+                    Turn::Act(Action::DrawKnown { card: pick_card() })
+                }
             }
             1 => Turn::Act(Action::Stop),
             _ if i == quit_idx => Turn::Quit,

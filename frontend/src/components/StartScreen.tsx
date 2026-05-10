@@ -1,15 +1,21 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 
 export type GameMode = "simulator" | "tracker";
 
 interface Props {
-  onStart: (mode: GameMode, playerCount: number, simulations: number) => void;
+  onStart: (
+    mode: GameMode,
+    playerCount: number,
+    simulations: number,
+    showHints: boolean,
+  ) => void;
 }
 
 export default function StartScreen(props: Props) {
   const [count, setCount] = createSignal(3);
   const [mode, setMode] = createSignal<GameMode>("simulator");
   const [simulations, setSimulations] = createSignal(500);
+  const [showHints, setShowHints] = createSignal(true);
 
   const simQuality = () => {
     const n = simulations();
@@ -119,39 +125,76 @@ export default function StartScreen(props: Props) {
             </div>
           </div>
 
-          {/* Advisor simulations slider */}
+          {/* AI Hints toggle */}
           <div class="mb-8">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-gray-400 text-xs font-medium uppercase tracking-wider">
-                Advisor Quality
-              </p>
-              <span class="text-xs font-bold tabular-nums">
-                <span class={simQuality().color}>{simQuality().label}</span>
-                <span class="text-gray-500 ml-1.5">
-                  {simulations().toLocaleString()} sims
-                </span>
-              </span>
-            </div>
-            <input
-              type="range"
-              min="500"
-              max="10000"
-              step="500"
-              value={simulations()}
-              onInput={(e) => setSimulations(parseInt(e.currentTarget.value))}
-              class="w-full h-2 rounded-full appearance-none cursor-pointer accent-amber-400
-                     bg-gray-700"
-            />
-            <div class="flex justify-between text-gray-600 text-xs mt-1.5">
-              <span>500</span>
-              <span>10,000</span>
+            <p class="text-gray-400 text-xs font-medium uppercase tracking-wider text-center mb-3">
+              AI Hints
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setShowHints(true)}
+                class={`p-3 rounded-2xl border text-center transition-all ${
+                  showHints()
+                    ? "bg-violet-600/20 border-violet-500/50 ring-1 ring-violet-500/30"
+                    : "bg-gray-800 border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <div class="text-lg mb-1">✨</div>
+                <div class="font-bold text-sm text-white">Hints On</div>
+                <div class="text-xs text-gray-500 mt-0.5">
+                  AI advisor enabled
+                </div>
+              </button>
+              <button
+                onClick={() => setShowHints(false)}
+                class={`p-3 rounded-2xl border text-center transition-all ${
+                  !showHints()
+                    ? "bg-gray-600/20 border-gray-500/50 ring-1 ring-gray-500/30"
+                    : "bg-gray-800 border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <div class="text-lg mb-1">🔕</div>
+                <div class="font-bold text-sm text-white">Hints Off</div>
+                <div class="text-xs text-gray-500 mt-0.5">Play unassisted</div>
+              </button>
             </div>
           </div>
+
+          {/* Advisor simulations slider — only when hints are on */}
+          <Show when={showHints()}>
+            <div class="mb-8">
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-gray-400 text-xs font-medium uppercase tracking-wider">
+                  Advisor Quality
+                </p>
+                <span class="text-xs font-bold tabular-nums">
+                  <span class={simQuality().color}>{simQuality().label}</span>
+                  <span class="text-gray-500 ml-1.5">
+                    {simulations().toLocaleString()} sims
+                  </span>
+                </span>
+              </div>
+              <input
+                type="range"
+                min="500"
+                max="10000"
+                step="500"
+                value={simulations()}
+                onInput={(e) => setSimulations(parseInt(e.currentTarget.value))}
+                class="w-full h-2 rounded-full appearance-none cursor-pointer accent-amber-400
+                       bg-gray-700"
+              />
+              <div class="flex justify-between text-gray-600 text-xs mt-1.5">
+                <span>500</span>
+                <span>10,000</span>
+              </div>
+            </div>
+          </Show>
 
           {/* Start button */}
           <button
             onClick={() => {
-              props.onStart(mode(), count(), simulations());
+              props.onStart(mode(), count(), simulations(), showHints());
             }}
             class="w-full py-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xl font-bold rounded-2xl transition-colors shadow-lg shadow-emerald-900/40"
           >

@@ -30,6 +30,7 @@ export default function App() {
    *  before the corresponding action so pressing Undo restores it exactly. */
   const [history, setHistory] = createSignal<GameState[]>([]);
   const [numberRounds, setNumberRounds] = createSignal<number>(500);
+  const [showHints, setShowHints] = createSignal<boolean>(true);
 
   // ── WASM initialisation ───────────────────────────────────────────────────
 
@@ -41,9 +42,11 @@ export default function App() {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function refreshRec(s: GameState) {
-    const recommendation =
-      s.phase.type === "Playing" ? getRecommendation(s, numberRounds()) : null;
-    console.log("Recommendation:", recommendation);
+    if (!showHints() || s.phase.type !== "Playing") {
+      setRec(null);
+      return;
+    }
+    const recommendation = getRecommendation(s, numberRounds());
     setRec(recommendation);
   }
 
@@ -53,10 +56,16 @@ export default function App() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  function handleStart(m: GameMode, playerCount: number, simulations: number) {
+  function handleStart(
+    m: GameMode,
+    playerCount: number,
+    simulations: number,
+    hints: boolean,
+  ) {
     setHistory([]);
     setMode(m);
     setNumberRounds(simulations);
+    setShowHints(hints);
     const s = newGame(playerCount);
     setGameState(s);
     refreshRec(s);
