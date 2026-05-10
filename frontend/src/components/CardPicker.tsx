@@ -80,7 +80,7 @@ export default function CardPicker(props: Props) {
         <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">
           Number Cards
         </p>
-        <div class="grid grid-cols-7 gap-1.5">
+        <div class="grid grid-cols-5 gap-1.5">
           <For each={NUMBER_CARDS}>
             {(card) => {
               const left = () => remaining(card);
@@ -92,10 +92,10 @@ export default function CardPicker(props: Props) {
                     left() === 0
                       ? "opacity-30"
                       : "opacity-100 hover:brightness-110"
-                  } relative aspect-2/3 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow text-sm transition-all active:scale-95`}
+                  } relative aspect-2/3 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow text-lg transition-all active:scale-95`}
                 >
                   {n}
-                  <span class="absolute bottom-0.5 right-1 text-[9px] opacity-70">
+                  <span class="absolute bottom-1 right-1 text-[10px] opacity-70">
                     ×{left()}
                   </span>
                 </button>
