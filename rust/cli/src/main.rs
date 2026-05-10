@@ -88,9 +88,18 @@ fn find_winner(state: &GameState) -> Option<usize> {
         .map(|(i, _)| i)
 }
 
+// ── Turn result ──────────────────────────────────────────────────────────────
+
+enum Turn {
+    Act(Action),
+    Undo,
+    Quit,
+}
+
 // ── Round loop ────────────────────────────────────────────────────────────────
 
 fn run_round(state: &mut GameState) {
+    let mut history: Vec<GameState> = Vec::new();
     clear_screen();
     print_round_header(state);
 
@@ -106,17 +115,36 @@ fn run_round(state: &mut GameState) {
             print_advice(r);
         }
 
-        let Some(action) = select_action(state) else {
-            println!("\n  Exiting.\n");
-            std::process::exit(0);
-        };
-
-        let pid = state.current_player;
-        match apply_action(state.clone(), pid, action) {
-            Ok(new) => *state = new,
-            Err(e) => {
-                println!("\n  ⚠  Engine error: {e:?}\n");
-                pause_ms(1500);
+        match select_action(state, !history.is_empty()) {
+            Turn::Quit => {
+                println!("\n  Exiting.\n");
+                std::process::exit(0);
+            }
+            Turn::Undo => {
+                if let Some(prev) = history.pop() {
+                    *state = prev;
+                    println!("\n  ↩  Undo — restored previous state.\n");
+                    pause_ms(600);
+                }
+                // loop re-renders the board with the restored state
+            }
+            Turn::Act(action) => {
+                let pid = state.current_player;
+                let snapshot = state.clone();
+                match apply_action(state.clone(), pid, action) {
+                    Ok(new) => {
+                        // save pre-action snapshot, evicting the oldest if full
+                        if history.len() >= MAX_HISTORY {
+                            history.remove(0);
+                        }
+                        history.push(snapshot);
+                        *state = new;
+                    }
+                    Err(e) => {
+                        println!("\n  ⚠  Engine error: {e:?}\n");
+                        pause_ms(1500);
+                    }
+                }
             }
         }
     }
@@ -124,14 +152,31 @@ fn run_round(state: &mut GameState) {
 
 // ── Action selection ──────────────────────────────────────────────────────────
 
-/// Returns the action to apply, or `None` when the user chooses Quit.
-fn select_action(state: &GameState) -> Option<Action> {
+/// Returns the turn result: an action to apply, an undo request, or quit.
+fn select_action(state: &GameState, can_undo: bool) -> Turn {
     // ── Forced: pending effect needs resolution ────────────────────────────
     if let Some(effect) = &state.pending_effect {
+        // When undo is available, give the player a chance to back out
+        // before being forced into the target-picker sub-prompts.
+        if can_undo {
+            let pre_items = ["⚡  Resolve effect", "↩  Undo last action", "🚪  Quit"];
+            let choice = Select::with_theme(&theme())
+                .with_prompt("  Pending effect — resolve or undo?")
+                .items(&pre_items)
+                .default(0)
+                .interact()
+                .unwrap_or(0);
+            match choice {
+                1 => return Turn::Undo,
+                2 => return Turn::Quit,
+                _ => {} // 0 → fall through to resolution
+            }
+        }
+
         return match effect {
             PendingEffect::Freeze => {
                 let target = pick_target(state, "❄️  Freeze which player?");
-                Some(Action::Freeze { target })
+                Turn::Act(Action::Freeze { target })
             }
             PendingEffect::Tap3 => {
                 let mode_items = [
@@ -148,26 +193,32 @@ fn select_action(state: &GameState) -> Option<Action> {
                 let target = pick_target(state, "👆  Tap3 which player?");
 
                 if mode == 0 {
-                    Some(Action::Tap3 { target })
+                    Turn::Act(Action::Tap3 { target })
                 } else {
                     let cards = collect_tap3_cards(state, target);
-                    Some(Action::Tap3Known { target, cards })
+                    Turn::Act(Action::Tap3Known { target, cards })
                 }
             }
         };
     }
 
     // ── Normal turn ────────────────────────────────────────────────────────
-    let items = [
-        "🎲  Draw            draw a random card from the deck",
+    let mut menu: Vec<&str> = vec![
+        "🃏  Draw            enter the card you flipped",
         "✋  Stop            lock in your current score",
-        "🚪  Quit",
     ];
+    if can_undo {
+        menu.push("↩  Undo            restore the previous state");
+    }
+    menu.push("🚪  Quit");
+
+    let quit_idx = menu.len() - 1;
+    let undo_idx = quit_idx - 1; // only meaningful when can_undo is true
 
     loop {
         let i = Select::with_theme(&theme())
             .with_prompt("  What do you want to do?")
-            .items(&items)
+            .items(&menu)
             .default(0)
             .interact()
             .unwrap_or(usize::MAX);
@@ -175,11 +226,12 @@ fn select_action(state: &GameState) -> Option<Action> {
         return match i {
             0 => {
                 println!();
-                Some(Action::DrawKnown { card: pick_card() })
+                Turn::Act(Action::DrawKnown { card: pick_card() })
             }
-            1 => Some(Action::Stop),
-            2 => None,
-            _ => continue, // shouldn't happen
+            1 => Turn::Act(Action::Stop),
+            _ if i == quit_idx => Turn::Quit,
+            _ if can_undo && i == undo_idx => Turn::Undo,
+            _ => continue,
         };
     }
 }
@@ -249,12 +301,11 @@ fn pick_card() -> Card {
 // ── Target picker ─────────────────────────────────────────────────────────────
 
 fn pick_target(state: &GameState, prompt: &str) -> usize {
-    let pid = state.current_player;
     let targets: Vec<(usize, String)> = state
         .players
         .iter()
         .enumerate()
-        .filter(|&(i, p)| i != pid && p.status == PlayerStatus::Active)
+        .filter(|&(_, p)| p.status == PlayerStatus::Active)
         .map(|(i, p)| {
             let nums: Vec<String> = p.numbers.iter().map(|n| n.to_string()).collect();
             let label = format!(
@@ -348,6 +399,7 @@ fn pause_ms(ms: u64) {
 }
 
 const W: usize = 60; // inner box width
+const MAX_HISTORY: usize = 30;
 
 fn rule(c: char) -> String {
     std::iter::repeat(c).take(W).collect::<String>()
