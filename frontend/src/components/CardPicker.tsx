@@ -24,24 +24,40 @@ const NUMBER_CARDS: Card[] = Array.from({ length: 13 }, (_, i) => ({
 })) as Card[];
 
 const ACTION_CARDS: { card: Card; label: string; emoji: string }[] = [
-  { card: { type: "Action", value: { type: "Lifeline" } }, label: "Lifeline", emoji: "🛡️" },
-  { card: { type: "Action", value: { type: "Freeze"   } }, label: "Freeze",   emoji: "🧊" },
-  { card: { type: "Action", value: { type: "Tap3"     } }, label: "Tap 3",    emoji: "👆" },
+  {
+    card: { type: "Action", value: { type: "Lifeline" } },
+    label: "Lifeline",
+    emoji: "🛡️",
+  },
+  {
+    card: { type: "Action", value: { type: "Freeze" } },
+    label: "Freeze",
+    emoji: "🧊",
+  },
+  {
+    card: { type: "Action", value: { type: "Tap3" } },
+    label: "Tap 3",
+    emoji: "👆",
+  },
 ];
 
 const MODIFIER_CARDS: { card: Card; label: string }[] = [
-  { card: { type: "Modifier", value: { type: "Add", value: 2  } }, label: "+2"  },
-  { card: { type: "Modifier", value: { type: "Add", value: 4  } }, label: "+4"  },
-  { card: { type: "Modifier", value: { type: "Add", value: 6  } }, label: "+6"  },
-  { card: { type: "Modifier", value: { type: "Add", value: 8  } }, label: "+8"  },
-  { card: { type: "Modifier", value: { type: "Add", value: 10 } }, label: "+10" },
-  { card: { type: "Modifier", value: { type: "Multiply2"       } }, label: "×2"  },
+  { card: { type: "Modifier", value: { type: "Add", value: 2 } }, label: "+2" },
+  { card: { type: "Modifier", value: { type: "Add", value: 4 } }, label: "+4" },
+  { card: { type: "Modifier", value: { type: "Add", value: 6 } }, label: "+6" },
+  { card: { type: "Modifier", value: { type: "Add", value: 8 } }, label: "+8" },
+  {
+    card: { type: "Modifier", value: { type: "Add", value: 10 } },
+    label: "+10",
+  },
+  { card: { type: "Modifier", value: { type: "Multiply2" } }, label: "×2" },
 ];
 
 function countInPile(draw: Card[], card: Card): number {
   return draw.filter((c) => {
     if (c.type !== card.type) return false;
-    if (c.type === "Number" && card.type === "Number") return c.value === card.value;
+    if (c.type === "Number" && card.type === "Number")
+      return c.value === card.value;
     if (c.type === "Action" && card.type === "Action")
       return c.value.type === card.value.type;
     if (c.type === "Modifier" && card.type === "Modifier") {
@@ -55,8 +71,7 @@ function countInPile(draw: Card[], card: Card): number {
 }
 
 export default function CardPicker(props: Props) {
-  const remaining = (card: Card) =>
-    countInPile(props.deck.draw_pile, card);
+  const remaining = (card: Card) => countInPile(props.deck.draw_pile, card);
 
   return (
     <div class="space-y-4">
@@ -74,8 +89,10 @@ export default function CardPicker(props: Props) {
                 <button
                   onClick={() => props.onPick(card)}
                   class={`${NUM_BG[n] ?? "bg-gray-500"} ${
-                    left() === 0 ? "opacity-30" : "opacity-100 hover:brightness-110"
-                  } relative aspect-[2/3] rounded-lg flex flex-col items-center justify-center text-white font-bold shadow text-sm transition-all active:scale-95`}
+                    left() === 0
+                      ? "opacity-30"
+                      : "opacity-100 hover:brightness-110"
+                  } relative aspect-2/3 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow text-sm transition-all active:scale-95`}
                 >
                   {n}
                   <span class="absolute bottom-0.5 right-1 text-[9px] opacity-70">
@@ -101,7 +118,9 @@ export default function CardPicker(props: Props) {
                 <button
                   onClick={() => props.onPick(card)}
                   class={`${
-                    left() === 0 ? "opacity-30" : "opacity-100 hover:bg-gray-600"
+                    left() === 0
+                      ? "opacity-30"
+                      : "opacity-100 hover:bg-gray-600"
                   } bg-gray-700 border border-gray-600 rounded-xl p-3 flex flex-col items-center gap-1 text-white transition-all active:scale-95`}
                 >
                   <span class="text-xl">{emoji}</span>
@@ -127,11 +146,15 @@ export default function CardPicker(props: Props) {
                 <button
                   onClick={() => props.onPick(card)}
                   class={`${
-                    left() === 0 ? "opacity-30" : "opacity-100 hover:bg-violet-700"
+                    left() === 0
+                      ? "opacity-30"
+                      : "opacity-100 hover:bg-violet-700"
                   } bg-indigo-700 border border-indigo-600 rounded-xl py-2.5 flex flex-col items-center gap-0.5 text-white transition-all active:scale-95`}
                 >
                   <span class="font-bold text-sm">{label}</span>
-                  <span class="text-[10px] text-indigo-300">×{left()} left</span>
+                  <span class="text-[10px] text-indigo-300">
+                    ×{left()} left
+                  </span>
                 </button>
               );
             }}

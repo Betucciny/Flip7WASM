@@ -33,9 +33,7 @@ export default function SimulatorBoard(props: Props) {
   const targets = () =>
     s()
       .players.map((p, i) => ({ p, i }))
-      .filter(
-        ({ p, i }) => i !== s().current_player && p.status.type === "Active",
-      );
+      .filter(({ p, i }) => p.status.type === "Active");
 
   function fire(action: Action) {
     props.onAction(action);
@@ -85,47 +83,6 @@ export default function SimulatorBoard(props: Props) {
                 {s().current_player} resolves a queued effect
               </div>
             </Show>
-            {/* Current player hand */}
-            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <div class="text-xs text-gray-500 uppercase tracking-wider">
-                    Your turn
-                  </div>
-                  <div class="text-xl font-bold text-amber-400">
-                    Player {s().current_player}
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="text-xs text-gray-500">Score</div>
-                  <div class="text-3xl font-black tabular-nums text-white">
-                    {cur().status.type === "Busted" ? "BUST" : score()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Big number cards */}
-              <div class="flex flex-wrap gap-2 min-h-[5rem] items-center">
-                <Show when={cur().numbers.length === 0}>
-                  <span class="text-gray-600 text-sm italic">No cards yet</span>
-                </Show>
-                <For each={cur().numbers}>{(n) => <BigNumberCard n={n} />}</For>
-              </div>
-
-              {/* Modifiers + lifeline */}
-              <Show when={cur().modifiers.length > 0 || cur().has_lifeline}>
-                <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-800">
-                  <For each={cur().modifiers}>
-                    {(m) => <ModifierTag mod={m} />}
-                  </For>
-                  <Show when={cur().has_lifeline}>
-                    <div class="bg-amber-600/20 border border-amber-600/30 px-2.5 py-1 rounded-md text-amber-400 text-xs font-bold">
-                      🛡️ Lifeline
-                    </div>
-                  </Show>
-                </div>
-              </Show>
-            </div>
 
             {/* Advisor */}
             <Show when={props.recommendation}>
@@ -184,6 +141,47 @@ export default function SimulatorBoard(props: Props) {
                 </button>
               </div>
             </Show>
+            {/* Current player hand */}
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <div class="text-xs text-gray-500 uppercase tracking-wider">
+                    Your turn
+                  </div>
+                  <div class="text-xl font-bold text-amber-400">
+                    Player {s().current_player}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-gray-500">Score</div>
+                  <div class="text-3xl font-black tabular-nums text-white">
+                    {cur().status.type === "Busted" ? "BUST" : score()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Big number cards */}
+              <div class="flex flex-wrap gap-2 min-h-20 items-center">
+                <Show when={cur().numbers.length === 0}>
+                  <span class="text-gray-600 text-sm italic">No cards yet</span>
+                </Show>
+                <For each={cur().numbers}>{(n) => <BigNumberCard n={n} />}</For>
+              </div>
+
+              {/* Modifiers + lifeline */}
+              <Show when={cur().modifiers.length > 0 || cur().has_lifeline}>
+                <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-800">
+                  <For each={cur().modifiers}>
+                    {(m) => <ModifierTag mod={m} />}
+                  </For>
+                  <Show when={cur().has_lifeline}>
+                    <div class="bg-amber-600/20 border border-amber-600/30 px-2.5 py-1 rounded-md text-amber-400 text-xs font-bold">
+                      🛡️ Lifeline
+                    </div>
+                  </Show>
+                </div>
+              </Show>
+            </div>
           </div>
         </Show>
         <div class="lg:col-span-3 space-y-3">

@@ -53,9 +53,9 @@ pub fn is_round_over(state: &GameState) -> bool {
 /// Cards flow:
 /// 1. Every player's held number/modifier cards are returned to the discard pile
 ///    so no cards leak out of the deck model across rounds.
-/// 2. The discard pile (now containing ALL played cards) is shuffled and placed
-///    at the **bottom** of the draw pile — undrawn cards stay on top and are
-///    seen first next round, matching the real-game behaviour.
+/// 2. The discard pile and any remaining draw-pile cards are merged into one
+///    full deck and reshuffled completely — every new round starts with a
+///    freshly randomised deck.
 ///
 /// Only call this when `state.phase == GamePhase::RoundOver`.
 pub fn end_round(state: &mut GameState) {
@@ -89,12 +89,12 @@ pub fn end_round(state: &mut GameState) {
 
     state.round += 1;
 
-    // Shuffle the discard pile and place it at the BOTTOM of the draw pile.
-    // (Vec::pop draws from the end = "top", so prepending = bottom.)
-    let mut recycled: Vec<Card> = state.deck.discard_pile.drain(..).collect();
-    shuffle_deck(&mut recycled);
-    recycled.append(&mut state.deck.draw_pile); // draw_pile on top (end of vec)
-    state.deck.draw_pile = recycled;
+    // Merge all cards (discard pile + any remaining draw pile cards) into one
+    // full deck and reshuffle it completely for the new round.
+    let mut full_deck: Vec<Card> = state.deck.discard_pile.drain(..).collect();
+    full_deck.append(&mut state.deck.draw_pile);
+    shuffle_deck(&mut full_deck);
+    state.deck.draw_pile = full_deck;
 
     state.pending_effect = None;
     state.effect_queue.clear();

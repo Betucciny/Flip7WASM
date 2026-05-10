@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="530">
+<rect width="920" height="530" fill="#1e1e2e"/>
+<rect x="78" y="72" width="802" height="363" fill="#181825" rx="4"/>
+<text x="479" y="48" text-anchor="middle" font-family="monospace,sans-serif" font-size="17" font-weight="bold" fill="#cdd6f4">3 low numbers + Add10 [1,2,3]</text>
+<line x1="78" y1="362.4" x2="880" y2="362.4" stroke="#45475a" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="73.0" y="366.4" text-anchor="end" font-family="monospace" font-size="11" fill="#6c7086">169</text>
+<line x1="78" y1="289.8" x2="880" y2="289.8" stroke="#45475a" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="73.0" y="293.8" text-anchor="end" font-family="monospace" font-size="11" fill="#6c7086">339</text>
+<line x1="78" y1="217.2" x2="880" y2="217.2" stroke="#45475a" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="73.0" y="221.2" text-anchor="end" font-family="monospace" font-size="11" fill="#6c7086">508</text>
+<line x1="78" y1="144.6" x2="880" y2="144.6" stroke="#45475a" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="73.0" y="148.6" text-anchor="end" font-family="monospace" font-size="11" fill="#6c7086">678</text>
+<line x1="78" y1="72.0" x2="880" y2="72.0" stroke="#45475a" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="73.0" y="76.0" text-anchor="end" font-family="monospace" font-size="11" fill="#6c7086">847</text>
+<text x="73.0" y="439.0" text-anchor="end" font-family="monospace" font-size="11" fill="#6c7086">0</text>
+<rect x="79.0" y="72.0" width="24.7" height="363.0" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="159.2" y="431.6" width="24.7" height="3.4" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="185.9" y="428.6" width="24.7" height="6.4" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="212.7" y="422.1" width="24.7" height="12.9" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="239.4" y="412.3" width="24.7" height="22.7" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="266.1" y="425.1" width="24.7" height="9.9" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="292.9" y="363.9" width="24.7" height="71.1" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="319.6" y="402.4" width="24.7" height="32.6" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="346.3" y="404.1" width="24.7" height="30.9" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="373.1" y="424.3" width="24.7" height="10.7" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="399.8" y="422.6" width="24.7" height="12.4" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="426.5" y="399.4" width="24.7" height="35.6" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="453.3" y="356.6" width="24.7" height="78.4" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="480.0" y="351.4" width="24.7" height="83.6" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="506.7" y="379.3" width="24.7" height="55.7" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="533.5" y="428.6" width="24.7" height="6.4" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="560.2" y="432.4" width="24.7" height="2.6" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="586.9" y="434.1" width="24.7" height="0.9" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="640.4" y="433.7" width="24.7" height="1.3" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="667.1" y="434.1" width="24.7" height="0.9" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="693.9" y="434.6" width="24.7" height="0.4" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="720.6" y="433.3" width="24.7" height="1.7" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="747.3" y="432.4" width="24.7" height="2.6" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="774.1" y="430.7" width="24.7" height="4.3" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="800.8" y="432.4" width="24.7" height="2.6" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="827.5" y="433.7" width="24.7" height="1.3" fill="#89b4fa" opacity="0.82" rx="2"/>
+<rect x="854.3" y="432.0" width="24.7" height="3.0" fill="#89b4fa" opacity="0.82" rx="2"/>
+<line x1="177.5" y1="72" x2="177.5" y2="435" stroke="#f38ba8" stroke-width="2.5" stroke-dasharray="7,4"/>
+<text x="177.5" y="63.0" text-anchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill="#f38ba8">▲ 16</text>
+<line x1="78.0" y1="435" x2="78.0" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="78.0" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">0</text>
+<line x1="158.2" y1="435" x2="158.2" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="158.2" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">13</text>
+<line x1="238.4" y1="435" x2="238.4" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="238.4" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">26</text>
+<line x1="318.6" y1="435" x2="318.6" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="318.6" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">39</text>
+<line x1="398.8" y1="435" x2="398.8" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="398.8" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">52</text>
+<line x1="479.0" y1="435" x2="479.0" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="479.0" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">65</text>
+<line x1="559.2" y1="435" x2="559.2" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="559.2" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">77</text>
+<line x1="639.4" y1="435" x2="639.4" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="639.4" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">90</text>
+<line x1="719.6" y1="435" x2="719.6" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="719.6" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">103</text>
+<line x1="799.8" y1="435" x2="799.8" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="799.8" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">116</text>
+<line x1="880.0" y1="435" x2="880.0" y2="440.0" stroke="#6c7086" stroke-width="1"/>
+<text x="880.0" y="452.0" text-anchor="middle" font-family="monospace" font-size="11" fill="#6c7086">129</text>
+<line x1="78" y1="435" x2="880" y2="435" stroke="#cdd6f4" stroke-width="1.5"/>
+<line x1="78" y1="72" x2="78" y2="435" stroke="#cdd6f4" stroke-width="1.5"/>
+<text x="479" y="520" text-anchor="middle" font-family="monospace" font-size="13" fill="#a6adc8">Score</text>
+<text x="22" y="254" text-anchor="middle" font-family="monospace" font-size="13" fill="#a6adc8" transform="rotate(-90 22 254)">Count</text>
+<rect x="88" y="473" width="12" height="12" fill="#89b4fa" opacity="0.82" rx="2"/>
+<text x="106" y="483" font-family="monospace" font-size="12" fill="#cdd6f4">Draw distribution (n=2000)</text>
+<line x1="308" y1="478" x2="338" y2="478" stroke="#f38ba8" stroke-width="2.5" stroke-dasharray="7,4"/>
+<text x="348" y="483" font-family="monospace" font-size="12" fill="#cdd6f4">Stop score (16)</text>
+</svg>

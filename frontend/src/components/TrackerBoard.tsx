@@ -130,7 +130,7 @@ export default function TrackerBoard(props: Props) {
   return (
     <div class="min-h-screen bg-gray-950 flex flex-col">
       {/* ── Header ── */}
-      <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
+      <header class="bg-gray-900 border-b border-gray-800 top-0 z-10">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <span class="font-black text-lg">
@@ -164,7 +164,7 @@ export default function TrackerBoard(props: Props) {
       <div class="flex-1 max-w-5xl mx-auto w-full p-4 grid lg:grid-cols-5 gap-4 items-start">
         {/* Right: action panel */}
         <Show when={isPlaying()}>
-          <div class="lg:col-span-2 space-y-4 sticky top-14">
+          <div class="lg:col-span-2 space-y-4 top-14">
             {/* Chain-resolution context banner */}
             <Show when={s().current_player !== s().turn_holder}>
               <div class="bg-violet-900/30 border border-violet-500/40 rounded-xl px-3 py-2 text-xs text-violet-300">
@@ -174,6 +174,195 @@ export default function TrackerBoard(props: Props) {
             </Show>
             {/* Current player hand */}
             <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              {/* Advisor — hidden while collecting Tap3 cards to save space */}
+              <Show when={props.recommendation}>
+                {(rec) => (
+                  <Show when={!isCollectingTap3Cards()}>
+                    <AdvisorPanel rec={rec()} />
+                  </Show>
+                )}
+              </Show>
+
+              {/* ── Freeze target picker ── */}
+              <Show when={pending()?.type === "Freeze"}>
+                <div class="bg-gray-900 border border-cyan-500/30 rounded-2xl p-4">
+                  <p class="text-sm text-center text-gray-400 mb-3">
+                    🧊 Choose a player to{" "}
+                    <strong class="text-white">Freeze</strong>
+                  </p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <For each={targets()}>
+                      {({ p, i }) => (
+                        <button
+                          onClick={() =>
+                            props.onAction({ type: "Freeze", target: i })
+                          }
+                          class="py-3 bg-cyan-700 hover:bg-cyan-600 text-white rounded-xl font-bold transition-colors"
+                        >
+                          P{i}
+                          <span class="ml-1 text-cyan-300 text-xs tabular-nums">
+                            ({calculateScore(p)} pts)
+                          </span>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </Show>
+
+              {/* ── Tap3 step 1: choose target ── */}
+              <Show when={isPickingTap3Target()}>
+                <div class="bg-gray-900 border border-violet-500/30 rounded-2xl p-4">
+                  <p class="text-sm text-center text-gray-400 mb-3">
+                    👆 Choose a player to{" "}
+                    <strong class="text-white">Tap 3</strong>
+                  </p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <For each={targets()}>
+                      {({ p, i }) => (
+                        <button
+                          onClick={() => setTap3Target(i)}
+                          class="py-3 bg-violet-700 hover:bg-violet-600 text-white rounded-xl font-bold transition-colors"
+                        >
+                          P{i}
+                          <span class="ml-1 text-violet-300 text-xs tabular-nums">
+                            ({calculateScore(p)} pts)
+                          </span>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </Show>
+
+              {/* ── Tap3 step 2: enter drawn cards ── */}
+              <Show when={isCollectingTap3Cards()}>
+                <div class="bg-gray-900 border border-violet-500/40 rounded-2xl p-4 space-y-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm font-bold text-violet-300">
+                        👆 Tap 3 — P{tap3Target()} draws
+                      </p>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        Enter each card P{tap3Target()} actually flipped
+                      </p>
+                    </div>
+                    <span class="text-xs text-gray-500 tabular-nums">
+                      {tap3Cards().length} / 3
+                    </span>
+                  </div>
+
+                  {/* Collected cards so far */}
+                  <Show when={tap3Cards().length > 0}>
+                    <div class="flex flex-wrap gap-2 items-center">
+                      <For each={tap3Cards()}>
+                        {(card, idx) => (
+                          <div class="relative group">
+                            <Show when={card.type === "Number"}>
+                              <SmallNumberCard
+                                n={
+                                  (card as { type: "Number"; value: number })
+                                    .value
+                                }
+                              />
+                            </Show>
+                            <Show when={card.type !== "Number"}>
+                              <div class="bg-indigo-600 w-8 h-10 rounded-md flex items-center justify-center text-white text-[10px] font-bold text-center leading-tight px-0.5">
+                                {card.type === "Action"
+                                  ? (
+                                      card as {
+                                        type: "Action";
+                                        value: { type: string };
+                                      }
+                                    ).value.type.slice(0, 3)
+                                  : card.type === "Modifier" &&
+                                      (
+                                        card as {
+                                          type: "Modifier";
+                                          value: { type: string };
+                                        }
+                                      ).value.type === "Multiply2"
+                                    ? "×2"
+                                    : `+${(card as { type: "Modifier"; value: { type: "Add"; value: number } }).value.value}`}
+                              </div>
+                            </Show>
+                            <button
+                              onClick={() => removeTap3Card(idx())}
+                              class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 hover:bg-red-500 rounded-full text-white text-[10px] font-bold hidden group-hover:flex items-center justify-center"
+                              title="Remove"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+
+                  {/* Status (bust / flip7) */}
+                  <Show when={tap3Status() !== null}>
+                    <div class="text-center text-sm font-bold text-amber-400 py-1">
+                      {tap3Status()}
+                    </div>
+                  </Show>
+
+                  {/* Card picker (hidden when done) */}
+                  <Show when={!tap3Done()}>
+                    <div class="border-t border-gray-800 pt-4">
+                      <p class="text-xs text-gray-500 mb-3">
+                        Pick card #{tap3Cards().length + 1} that P{tap3Target()}{" "}
+                        drew:
+                      </p>
+                      <CardPicker deck={s().deck} onPick={addTap3Card} />
+                    </div>
+                  </Show>
+
+                  {/* Confirm / cancel */}
+                  <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        setTap3Target(null);
+                        setTap3Cards([]);
+                      }}
+                      class="py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold text-sm transition-colors border border-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={tap3Cards().length === 0}
+                      onClick={confirmTap3}
+                      class="py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors"
+                    >
+                      Confirm Tap3
+                    </button>
+                  </div>
+                </div>
+              </Show>
+
+              {/* ── Normal draw: show card picker ── */}
+              <Show when={!pending()}>
+                <div class="space-y-3">
+                  {/* Card picker drawer */}
+                  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+                    <p class="text-xs text-gray-500 mb-3 uppercase tracking-wider">
+                      Which card did P{s().current_player} flip?
+                    </p>
+                    <CardPicker
+                      deck={s().deck}
+                      onPick={(card) =>
+                        props.onAction({ type: "DrawKnown", card })
+                      }
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => props.onAction({ type: "Stop" })}
+                    class="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-bold rounded-2xl transition-colors border border-gray-700"
+                  >
+                    ✋ Stop (lock in score)
+                  </button>
+                </div>
+              </Show>
               <div class="flex items-center justify-between mb-4">
                 <div>
                   <div class="text-xs text-gray-500 uppercase tracking-wider">
@@ -191,7 +380,7 @@ export default function TrackerBoard(props: Props) {
                 </div>
               </div>
 
-              <div class="flex flex-wrap gap-2 min-h-[5rem] items-center">
+              <div class="flex flex-wrap gap-2 min-h-20 items-center">
                 <Show when={cur().numbers.length === 0}>
                   <span class="text-gray-600 text-sm italic">No cards yet</span>
                 </Show>
@@ -211,196 +400,6 @@ export default function TrackerBoard(props: Props) {
                 </div>
               </Show>
             </div>
-
-            {/* Advisor — hidden while collecting Tap3 cards to save space */}
-            <Show when={props.recommendation}>
-              {(rec) => (
-                <Show when={!isCollectingTap3Cards()}>
-                  <AdvisorPanel rec={rec()} />
-                </Show>
-              )}
-            </Show>
-
-            {/* ── Freeze target picker ── */}
-            <Show when={pending()?.type === "Freeze"}>
-              <div class="bg-gray-900 border border-cyan-500/30 rounded-2xl p-4">
-                <p class="text-sm text-center text-gray-400 mb-3">
-                  🧊 Choose a player to{" "}
-                  <strong class="text-white">Freeze</strong>
-                </p>
-                <div class="grid grid-cols-2 gap-2">
-                  <For each={targets()}>
-                    {({ p, i }) => (
-                      <button
-                        onClick={() =>
-                          props.onAction({ type: "Freeze", target: i })
-                        }
-                        class="py-3 bg-cyan-700 hover:bg-cyan-600 text-white rounded-xl font-bold transition-colors"
-                      >
-                        P{i}
-                        <span class="ml-1 text-cyan-300 text-xs tabular-nums">
-                          ({calculateScore(p)} pts)
-                        </span>
-                      </button>
-                    )}
-                  </For>
-                </div>
-              </div>
-            </Show>
-
-            {/* ── Tap3 step 1: choose target ── */}
-            <Show when={isPickingTap3Target()}>
-              <div class="bg-gray-900 border border-violet-500/30 rounded-2xl p-4">
-                <p class="text-sm text-center text-gray-400 mb-3">
-                  👆 Choose a player to{" "}
-                  <strong class="text-white">Tap 3</strong>
-                </p>
-                <div class="grid grid-cols-2 gap-2">
-                  <For each={targets()}>
-                    {({ p, i }) => (
-                      <button
-                        onClick={() => setTap3Target(i)}
-                        class="py-3 bg-violet-700 hover:bg-violet-600 text-white rounded-xl font-bold transition-colors"
-                      >
-                        P{i}
-                        <span class="ml-1 text-violet-300 text-xs tabular-nums">
-                          ({calculateScore(p)} pts)
-                        </span>
-                      </button>
-                    )}
-                  </For>
-                </div>
-              </div>
-            </Show>
-
-            {/* ── Tap3 step 2: enter drawn cards ── */}
-            <Show when={isCollectingTap3Cards()}>
-              <div class="bg-gray-900 border border-violet-500/40 rounded-2xl p-4 space-y-4">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-sm font-bold text-violet-300">
-                      👆 Tap 3 — P{tap3Target()} draws
-                    </p>
-                    <p class="text-xs text-gray-500 mt-0.5">
-                      Enter each card P{tap3Target()} actually flipped
-                    </p>
-                  </div>
-                  <span class="text-xs text-gray-500 tabular-nums">
-                    {tap3Cards().length} / 3
-                  </span>
-                </div>
-
-                {/* Collected cards so far */}
-                <Show when={tap3Cards().length > 0}>
-                  <div class="flex flex-wrap gap-2 items-center">
-                    <For each={tap3Cards()}>
-                      {(card, idx) => (
-                        <div class="relative group">
-                          <Show when={card.type === "Number"}>
-                            <SmallNumberCard
-                              n={
-                                (card as { type: "Number"; value: number })
-                                  .value
-                              }
-                            />
-                          </Show>
-                          <Show when={card.type !== "Number"}>
-                            <div class="bg-indigo-600 w-8 h-10 rounded-md flex items-center justify-center text-white text-[10px] font-bold text-center leading-tight px-0.5">
-                              {card.type === "Action"
-                                ? (
-                                    card as {
-                                      type: "Action";
-                                      value: { type: string };
-                                    }
-                                  ).value.type.slice(0, 3)
-                                : card.type === "Modifier" &&
-                                    (
-                                      card as {
-                                        type: "Modifier";
-                                        value: { type: string };
-                                      }
-                                    ).value.type === "Multiply2"
-                                  ? "×2"
-                                  : `+${(card as { type: "Modifier"; value: { type: "Add"; value: number } }).value.value}`}
-                            </div>
-                          </Show>
-                          <button
-                            onClick={() => removeTap3Card(idx())}
-                            class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 hover:bg-red-500 rounded-full text-white text-[10px] font-bold hidden group-hover:flex items-center justify-center"
-                            title="Remove"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-
-                {/* Status (bust / flip7) */}
-                <Show when={tap3Status() !== null}>
-                  <div class="text-center text-sm font-bold text-amber-400 py-1">
-                    {tap3Status()}
-                  </div>
-                </Show>
-
-                {/* Card picker (hidden when done) */}
-                <Show when={!tap3Done()}>
-                  <div class="border-t border-gray-800 pt-4">
-                    <p class="text-xs text-gray-500 mb-3">
-                      Pick card #{tap3Cards().length + 1} that P{tap3Target()}{" "}
-                      drew:
-                    </p>
-                    <CardPicker deck={s().deck} onPick={addTap3Card} />
-                  </div>
-                </Show>
-
-                {/* Confirm / cancel */}
-                <div class="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    onClick={() => {
-                      setTap3Target(null);
-                      setTap3Cards([]);
-                    }}
-                    class="py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold text-sm transition-colors border border-gray-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    disabled={tap3Cards().length === 0}
-                    onClick={confirmTap3}
-                    class="py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors"
-                  >
-                    Confirm Tap3
-                  </button>
-                </div>
-              </div>
-            </Show>
-
-            {/* ── Normal draw: show card picker ── */}
-            <Show when={!pending()}>
-              <div class="space-y-3">
-                {/* Card picker drawer */}
-                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-                  <p class="text-xs text-gray-500 mb-3 uppercase tracking-wider">
-                    Which card did P{s().current_player} flip?
-                  </p>
-                  <CardPicker
-                    deck={s().deck}
-                    onPick={(card) =>
-                      props.onAction({ type: "DrawKnown", card })
-                    }
-                  />
-                </div>
-
-                <button
-                  onClick={() => props.onAction({ type: "Stop" })}
-                  class="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-bold rounded-2xl transition-colors border border-gray-700"
-                >
-                  ✋ Stop (lock in score)
-                </button>
-              </div>
-            </Show>
           </div>
         </Show>
         {/* Left: all players */}

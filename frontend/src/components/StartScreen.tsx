@@ -3,12 +3,21 @@ import { createSignal } from "solid-js";
 export type GameMode = "simulator" | "tracker";
 
 interface Props {
-  onStart: (mode: GameMode, playerCount: number) => void;
+  onStart: (mode: GameMode, playerCount: number, simulations: number) => void;
 }
 
 export default function StartScreen(props: Props) {
   const [count, setCount] = createSignal(3);
   const [mode, setMode] = createSignal<GameMode>("simulator");
+  const [simulations, setSimulations] = createSignal(500);
+
+  const simQuality = () => {
+    const n = simulations();
+    if (n <= 1000) return { label: "Fast", color: "text-emerald-400" };
+    if (n <= 3000) return { label: "Balanced", color: "text-amber-400" };
+    if (n <= 6000) return { label: "Accurate", color: "text-blue-400" };
+    return { label: "Precise", color: "text-violet-400" };
+  };
 
   return (
     <div class="min-h-screen bg-gray-950 flex items-center justify-center p-4 relative overflow-hidden">
@@ -110,10 +119,39 @@ export default function StartScreen(props: Props) {
             </div>
           </div>
 
+          {/* Advisor simulations slider */}
+          <div class="mb-8">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-gray-400 text-xs font-medium uppercase tracking-wider">
+                Advisor Quality
+              </p>
+              <span class="text-xs font-bold tabular-nums">
+                <span class={simQuality().color}>{simQuality().label}</span>
+                <span class="text-gray-500 ml-1.5">
+                  {simulations().toLocaleString()} sims
+                </span>
+              </span>
+            </div>
+            <input
+              type="range"
+              min="500"
+              max="10000"
+              step="500"
+              value={simulations()}
+              onInput={(e) => setSimulations(parseInt(e.currentTarget.value))}
+              class="w-full h-2 rounded-full appearance-none cursor-pointer accent-amber-400
+                     bg-gray-700"
+            />
+            <div class="flex justify-between text-gray-600 text-xs mt-1.5">
+              <span>500</span>
+              <span>10,000</span>
+            </div>
+          </div>
+
           {/* Start button */}
           <button
             onClick={() => {
-              props.onStart(mode(), count());
+              props.onStart(mode(), count(), simulations());
             }}
             class="w-full py-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xl font-bold rounded-2xl transition-colors shadow-lg shadow-emerald-900/40"
           >

@@ -29,6 +29,7 @@ export default function App() {
   /** Undo history — capped at MAX_HISTORY entries. Each entry is the state
    *  before the corresponding action so pressing Undo restores it exactly. */
   const [history, setHistory] = createSignal<GameState[]>([]);
+  const [numberRounds, setNumberRounds] = createSignal<number>(500);
 
   // ── WASM initialisation ───────────────────────────────────────────────────
 
@@ -40,7 +41,10 @@ export default function App() {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function refreshRec(s: GameState) {
-    setRec(s.phase.type === "Playing" ? getRecommendation(s, 5000) : null);
+    const recommendation =
+      s.phase.type === "Playing" ? getRecommendation(s, numberRounds()) : null;
+    console.log("Recommendation:", recommendation);
+    setRec(recommendation);
   }
 
   function pushHistory(s: GameState) {
@@ -68,6 +72,7 @@ export default function App() {
         "Total cards in discard pile:",
         next.deck.discard_pile.length,
       );
+      console.log("State:", next);
       pushHistory(s); // save pre-action state for undo
       setGameState(next);
       refreshRec(next);
