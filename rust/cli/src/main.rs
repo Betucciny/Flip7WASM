@@ -27,7 +27,8 @@ fn main() {
         let n = pick_player_count();
         let mode = pick_game_mode();
         let hints = ask_yn("  Show AI advisor hints?", true);
-        run_game(n, mode, hints);
+        let sim_count = if hints { pick_sim_count() } else { 500 };
+        run_game(n, mode, hints, sim_count);
         if !ask_yn("  Play again?", false) {
             break;
         }
@@ -58,6 +59,27 @@ fn pick_player_count() -> usize {
     idx + 2
 }
 
+fn pick_sim_count() -> u32 {
+    let items = [
+        "Fast      ·    500 simulations",
+        "Balanced  ·  2 000 simulations",
+        "Accurate  ·  5 000 simulations",
+        "Precise   · 10 000 simulations",
+    ];
+    let idx = Select::with_theme(&theme())
+        .with_prompt("  Advisor quality")
+        .items(&items)
+        .default(0)
+        .interact()
+        .unwrap_or(0);
+    match idx {
+        0 => 500,
+        1 => 2_000,
+        2 => 5_000,
+        _ => 10_000,
+    }
+}
+
 fn pick_game_mode() -> CliMode {
     let items = [
         "🎮  Simulator   engine draws random cards",
@@ -78,11 +100,11 @@ fn pick_game_mode() -> CliMode {
 
 // ── Game loop ─────────────────────────────────────────────────────────────────
 
-fn run_game(player_count: usize, mode: CliMode, hints: bool) {
+fn run_game(player_count: usize, mode: CliMode, hints: bool, sim_count: u32) {
     let mut state = new_game(player_count);
     println!("\n  ▶  Game started — {} players\n", player_count);
     loop {
-        run_round(&mut state, mode, hints);
+        run_round(&mut state, mode, hints, sim_count);
         print_round_results(&state);
         end_round(&mut state);
 
@@ -128,7 +150,7 @@ enum CliMode {
 
 // ── Round loop ────────────────────────────────────────────────────────────────
 
-fn run_round(state: &mut GameState, mode: CliMode, hints: bool) {
+fn run_round(state: &mut GameState, mode: CliMode, hints: bool, sim_count: u32) {
     let mut history: Vec<GameState> = Vec::new();
     clear_screen();
     print_round_header(state);
@@ -141,7 +163,7 @@ fn run_round(state: &mut GameState, mode: CliMode, hints: bool) {
 
         // Compute and display advisor recommendation only when hints are on.
         if hints {
-            let rec = recommend(state, 500);
+            let rec = recommend(state, sim_count);
             if let Some(ref r) = rec {
                 print_advice(r);
             }
