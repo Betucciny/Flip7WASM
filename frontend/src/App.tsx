@@ -53,9 +53,10 @@ export default function App() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  function handleStart(m: GameMode, playerCount: number) {
+  function handleStart(m: GameMode, playerCount: number, simulations: number) {
     setHistory([]);
     setMode(m);
+    setNumberRounds(simulations);
     const s = newGame(playerCount);
     setGameState(s);
     refreshRec(s);

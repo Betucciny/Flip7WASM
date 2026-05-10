@@ -33,7 +33,7 @@ export default function SimulatorBoard(props: Props) {
   const targets = () =>
     s()
       .players.map((p, i) => ({ p, i }))
-      .filter(({ p, i }) => p.status.type === "Active");
+      .filter(({ p }) => p.status.type === "Active");
 
   function fire(action: Action) {
     props.onAction(action);
